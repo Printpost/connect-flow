@@ -6,7 +6,6 @@ import {
   resendTwoFactorCode,
   validateTwoFactorCode,
 } from '@/api/printpostClient';
-import { externalLogin } from '@/api/printpostExternalAuth';
 import { createPageUrl } from '@/utils';
 
 // Provide explicit default to satisfy lint/type expectations
@@ -239,13 +238,11 @@ export const AuthProvider = ({ children }) => {
     hydrateFromStorage();
   }, [hydrateFromStorage]);
 
-  const login = useCallback(async ({ email, password, useExternal = false }) => {
+  const login = useCallback(async ({ email, password }) => {
     setAuthError(null);
 
     try {
-      const payload = useExternal
-        ? await externalLogin({ email, password })
-        : await loginRequest({ email, password });
+      const payload = await loginRequest({ email, password });
 
       if (payload?.twoFactor) {
         const masked = payload?.account?.emailMask || null;

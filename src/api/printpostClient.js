@@ -1,9 +1,6 @@
 // @ts-nocheck
-const DEFAULT_API_BASE_URL = 'http://localhost:3001/api';
-// In dev, prefer hitting Vite proxy at /api to avoid CORS
-const API_BASE_URL =
-  import.meta.env.VITE_PRINTPOST_API_URL ||
-  (import.meta.env.DEV ? '/api' : DEFAULT_API_BASE_URL);
+const DEFAULT_API_BASE_URL = 'https://api.printpost.com.br/v1';
+const API_BASE_URL = import.meta.env.VITE_PRINTPOST_API_URL || DEFAULT_API_BASE_URL;
 
 function buildUrl(endpoint) {
   if (endpoint.startsWith('http')) {
@@ -69,7 +66,7 @@ export async function loginRequest({ email, password }) {
     password,
   };
 
-  const response = await safeFetch(buildUrl('/accounts/auth'), {
+  const response = await safeFetch(buildUrl('/Accounts/auth'), {
     method: 'POST',
     headers: buildHeaders(null),
     body: JSON.stringify(body),
@@ -84,7 +81,7 @@ export async function validateTwoFactorCode({ userId, code }) {
     password: code,
   };
 
-  const response = await safeFetch(buildUrl('/accounts/validate-code'), {
+  const response = await safeFetch(buildUrl('/Accounts/validate-code'), {
     method: 'POST',
     headers: buildHeaders(null),
     body: JSON.stringify(body),
@@ -94,7 +91,7 @@ export async function validateTwoFactorCode({ userId, code }) {
 }
 
 export async function resendTwoFactorCode({ userId }) {
-  const response = await safeFetch(buildUrl('/accounts/resend-code'), {
+  const response = await safeFetch(buildUrl('/Accounts/resend-code'), {
     method: 'POST',
     headers: buildHeaders(null),
     body: JSON.stringify({ userId }),
@@ -108,7 +105,7 @@ export async function fetchAccountProfile({ token, userId }) {
     throw new Error('Token e usuário são obrigatórios');
   }
 
-  const response = await safeFetch(buildUrl(`/accounts/${userId}`), {
+  const response = await safeFetch(buildUrl(`/Accounts/${userId}`), {
     headers: buildHeaders(token),
   });
 
@@ -120,7 +117,7 @@ export async function refreshAccessToken({ accessToken, refreshToken }) {
     throw new Error('Refresh token obrigatório');
   }
 
-  const response = await safeFetch(buildUrl('/accounts/refresh-token'), {
+  const response = await safeFetch(buildUrl('/Accounts/refresh-token'), {
     method: 'POST',
     headers: buildHeaders(accessToken),
     body: JSON.stringify({ refreshToken }),
