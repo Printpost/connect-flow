@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
+import { useAuth } from "@/lib/AuthContext";
+import { fetchAccountProfile, fetchCostCenters, fetchRequestTags, fetchRequestDatasetsDashboard, fetchRequestsDashboard } from "@/api/printpostClient";
 import { 
   Send, 
   Clock, 
@@ -60,6 +62,11 @@ export default function Dashboard() {
     campanha: "todas",
     centroDeCusto: "todos"
   });
+  const [selectedPrintpostCostCenter, setSelectedPrintpostCostCenter] = useState("");
+  const [selectedPrintpostTag, setSelectedPrintpostTag] = useState("");
+  const NONE_VALUE = "__none__";
+
+  const { user: authUser, token: authToken, isAuthenticated } = useAuth();
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ['campaigns'],
@@ -73,55 +80,144 @@ export default function Dashboard() {
     initialData: [],
   });
 
-  const { data: rawPerformance = [], isLoading: isLoadingPerformance } = useQuery({
-    queryKey: ['dashboard-performance', filtros],
-    queryFn: async () => {
-      if (base44?.analytics?.performancePorProduto) {
-        const result = await base44.analytics.performancePorProduto(filtros);
-        return result ?? [];
-      }
-      return [];
-    },
-  staleTime: 60_000,
+  const { data: accountProfile = authUser, isLoading: isLoadingAccountProfile } = useQuery({
+    queryKey: ['printpost-account', authToken, authUser?.id || authUser?._id],
+    queryFn: () => fetchAccountProfile({ token: authToken, userId: authUser?.id || authUser?._id }),
+    enabled: Boolean(authToken && (authUser?.id || authUser?._id)),
+    initialData: authUser || undefined,
+    staleTime: 5 * 60_000,
   });
 
-  const desempenhoPorProduto = useMemo(() => {
-    if (!rawPerformance) return [];
+  const { data: printpostCostCenters = [], isLoading: isLoadingPrintpostCostCenters } = useQuery({
+    queryKey: ['printpost-cost-centers', authToken],
+    queryFn: () => fetchCostCenters({ token: authToken }),
+    enabled: Boolean(authToken),
+    staleTime: 2 * 60_000,
+  });
 
-    if (Array.isArray(rawPerformance)) {
-      return rawPerformance.map((item, index) => ({
-        id: item.id ?? item.channel ?? `canal-${index}`,
-        channel: (item.channel ?? item.canal ?? '').toString().toLowerCase(),
-        totalSent: Number(item.totalSent ?? item.totalEnviados ?? 0),
-        totalDelivered: Number(item.totalDelivered ?? item.totalEntregues ?? 0),
-        deliveryRate: Number(item.deliveryRate ?? item.taxaEntregabilidade ?? 0),
-        statusBreakdown: Array.isArray(item.statusBreakdown ?? item.statusResumo)
-          ? (item.statusBreakdown ?? item.statusResumo)
-          : [],
-      }));
+  const { data: printpostRequestTags = [], isLoading: isLoadingPrintpostTags } = useQuery({
+    queryKey: ['printpost-request-tags', authToken],
+    queryFn: () => fetchRequestTags({ token: authToken, active: true, limit: 100 }),
+    enabled: Boolean(authToken),
+    staleTime: 2 * 60_000,
+  });
+
+  const todayIsoDate = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const activeStartDate = filtros.dataInicio || filtros.dataFim || todayIsoDate;
+  const activeEndDate = filtros.dataFim || filtros.dataInicio || todayIsoDate;
+  const fromIso = `${activeStartDate}T00:00:00-03:00`;
+  const toIso = `${activeEndDate}T23:59:59-03:00`;
+
+  const { data: requestsDashboardSummary = null, isLoading: isLoadingRequestsSummary } = useQuery({
+    queryKey: ['printpost-requests-dashboard', authToken, fromIso, toIso, selectedPrintpostCostCenter || null, filtros.campanha],
+    queryFn: ({ signal }) => fetchRequestsDashboard({
+      token: authToken,
+      from: fromIso,
+      to: toIso,
+      costCenterId: selectedPrintpostCostCenter || undefined,
+      campaignId: filtros.campanha && filtros.campanha !== 'todas' ? filtros.campanha : undefined,
+      signal,
+    }),
+    enabled: Boolean(authToken && fromIso && toIso),
+    staleTime: 60_000,
+  });
+
+  const { data: requestDataset = [], isLoading: isLoadingRequestDataset } = useQuery({
+    queryKey: ['printpost-request-datasets', authToken, fromIso, toIso, selectedPrintpostCostCenter || null, filtros.campanha],
+    queryFn: ({ signal }) => fetchRequestDatasetsDashboard({
+      token: authToken,
+      from: fromIso,
+      to: toIso,
+      costCenterId: selectedPrintpostCostCenter || undefined,
+      campaignId: filtros.campanha && filtros.campanha !== 'todas' ? filtros.campanha : undefined,
+      signal,
+    }),
+    enabled: Boolean(authToken && fromIso && toIso),
+    staleTime: 60_000,
+  });
+
+  const selectedCostCenter = useMemo(() => (
+    printpostCostCenters.find((item) => item.id === selectedPrintpostCostCenter) || null
+  ), [printpostCostCenters, selectedPrintpostCostCenter]);
+
+  const selectedTag = useMemo(() => (
+    printpostRequestTags.find((item) => item.id === selectedPrintpostTag) || null
+  ), [printpostRequestTags, selectedPrintpostTag]);
+
+  const handleCostCenterChange = useCallback((value) => {
+    if (value === NONE_VALUE) {
+      setSelectedPrintpostCostCenter("");
+      return;
+    }
+    setSelectedPrintpostCostCenter(value);
+  }, []);
+
+  const handleTagChange = useCallback((value) => {
+    if (value === NONE_VALUE) {
+      setSelectedPrintpostTag("");
+      return;
+    }
+    setSelectedPrintpostTag(value);
+  }, []);
+
+  const desempenhoPorProduto = useMemo(() => {
+    if (!Array.isArray(requestDataset) || requestDataset.length === 0) {
+      return [];
     }
 
-    // Object fallback (e.g., { email: {...}, sms: {...} })
-    return Object.entries(rawPerformance).map(([key, value]) => ({
-      id: key,
-      channel: key.toLowerCase(),
-      totalSent: Number(value?.totalSent ?? value?.totalEnviados ?? 0),
-      totalDelivered: Number(value?.totalDelivered ?? value?.totalEntregues ?? 0),
-      deliveryRate: Number(value?.deliveryRate ?? value?.taxaEntregabilidade ?? 0),
-      statusBreakdown: Array.isArray(value?.statusBreakdown ?? value?.statusResumo)
-        ? (value?.statusBreakdown ?? value?.statusResumo)
-        : [],
-    }));
-  }, [rawPerformance]);
+    const channelKeys = ['carta', 'email', 'sms', 'whatsapp', 'rcs'];
 
-  const stats = {
-    total: campaigns.length,
-    agendadas: campaigns.filter(c => c.status === 'agendada').length,
-    enviando: campaigns.filter(c => c.status === 'enviando').length,
-    concluidas: campaigns.filter(c => c.status === 'concluida').length,
-  };
+    return requestDataset.reduce((accumulator, entry) => {
+      channelKeys.forEach((channel) => {
+        const totalKey = `${channel}All`;
+        if (entry[totalKey] === undefined) {
+          return;
+        }
 
-  const recentCampaigns = campaigns.slice(0, 5);
+        const totalSent = Number(entry[totalKey] ?? 0);
+        const totalDelivered = Number(entry[`${channel}Receive`] ?? entry[`${channel}Received`] ?? 0);
+        const totalNotDelivered = Number(entry[`${channel}NotReceive`] ?? 0);
+        const breakdownSource = Array.isArray(entry[channel]) ? entry[channel] : [];
+        const deliveryRate = totalSent > 0 ? (totalDelivered / totalSent) * 100 : 0;
+
+        accumulator.push({
+          id: channel,
+          channel,
+          totalSent,
+          totalDelivered,
+          totalNotDelivered,
+          deliveryRate,
+          statusBreakdown: breakdownSource.map((statusItem, statusIndex) => ({
+            name: statusItem.description || statusItem.label || `Status ${statusIndex + 1}`,
+            value: Number(statusItem.quantity ?? statusItem.value ?? 0),
+            color: STATUS_COLORS[statusIndex % STATUS_COLORS.length],
+          })),
+        });
+      });
+
+      return accumulator;
+    }, []);
+  }, [requestDataset]);
+
+  const stats = useMemo(() => {
+    const analise = Number(requestsDashboardSummary?.analise?.total ?? 0);
+    const execucao = Number(requestsDashboardSummary?.execucao?.total ?? 0);
+    const finalizados = Number(requestsDashboardSummary?.finalizados?.total ?? 0);
+    const cancelados = Number(requestsDashboardSummary?.cancelados?.total ?? 0);
+
+    return {
+      total: analise + execucao + finalizados + cancelados,
+      analise,
+      execucao,
+      finalizados,
+      cancelados,
+    };
+  }, [requestsDashboardSummary]);
+
+  const totalDelivered = useMemo(() => desempenhoPorProduto.reduce((sum, item) => sum + item.totalDelivered, 0), [desempenhoPorProduto]);
+  const totalSent = useMemo(() => desempenhoPorProduto.reduce((sum, item) => sum + item.totalSent, 0), [desempenhoPorProduto]);
+  const totalNotDelivered = useMemo(() => desempenhoPorProduto.reduce((sum, item) => sum + item.totalNotDelivered, 0), [desempenhoPorProduto]);
+  const recentCampaigns = useMemo(() => campaigns.slice(0, 5), [campaigns]);
 
   return (
     <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto">
@@ -211,6 +307,125 @@ export default function Dashboard() {
         </Card>
       </motion.div>
 
+          {isAuthenticated && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="mb-8"
+            >
+              <Card className="border-0 shadow-xl shadow-slate-200/50 bg-white">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ArrowUpRight className="w-5 h-5" />
+                    Integração Printpost
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-6 md:grid-cols-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-slate-500 tracking-wide mb-2">Usuário conectado</p>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                        <div className="flex items-center justify-between text-sm text-slate-600">
+                          <span>Nome</span>
+                          <span className="font-medium text-slate-900">
+                            {isLoadingAccountProfile ? 'Carregando...' : accountProfile?.name || accountProfile?.username || '—'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm text-slate-600">
+                          <span>Email</span>
+                          <span className="font-medium text-slate-900">
+                            {isLoadingAccountProfile ? 'Carregando...' : accountProfile?.email || accountProfile?.emailMask || '—'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm text-slate-600">
+                          <span>Org.</span>
+                          <span className="font-medium text-slate-900">
+                            {accountProfile?.organizationId || '—'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-200">
+                          <span>Centros ativos</span>
+                          <Badge variant="secondary" className="bg-slate-200 text-slate-700">
+                            {isLoadingPrintpostCostCenters ? '...' : printpostCostCenters.length}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Centro de Custo (Printpost)</Label>
+                      <Select
+                        value={selectedPrintpostCostCenter || NONE_VALUE}
+                        onValueChange={handleCostCenterChange}
+                        disabled={isLoadingPrintpostCostCenters}
+                      >
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder={isLoadingPrintpostCostCenters ? 'Carregando...' : 'Selecione um centro'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE_VALUE}>Nenhum</SelectItem>
+                          {printpostCostCenters.length === 0 ? (
+                            <SelectItem value="__no-centers" disabled>
+                              Nenhum centro disponível
+                            </SelectItem>
+                          ) : (
+                            printpostCostCenters.map((center) => (
+                              <SelectItem key={center.id} value={center.id}>
+                                {center.description || center.username || 'Sem descrição'}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {selectedCostCenter && (
+                        <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
+                          <p className="font-medium">Centro selecionado</p>
+                          <p>{selectedCostCenter.razaoSocial || selectedCostCenter.description || '—'}</p>
+                          <p className="text-xs text-emerald-600 mt-1">CNPJ: {selectedCostCenter.cnpj || '—'}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label>Tag de Solicitação</Label>
+                      <Select
+                        value={selectedPrintpostTag || NONE_VALUE}
+                        onValueChange={handleTagChange}
+                        disabled={isLoadingPrintpostTags}
+                      >
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder={isLoadingPrintpostTags ? 'Carregando...' : 'Selecione uma tag'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE_VALUE}>Nenhuma</SelectItem>
+                          {printpostRequestTags.length === 0 ? (
+                            <SelectItem value="__no-tags" disabled>
+                              Nenhuma tag encontrada
+                            </SelectItem>
+                          ) : (
+                            printpostRequestTags.map((tag) => (
+                              <SelectItem key={tag.id} value={tag.id}>
+                                {tag.description || tag.name || 'Sem descrição'}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {selectedTag && (
+                        <div className="mt-3 rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-sm text-indigo-700">
+                          <p className="font-medium">Tag selecionada</p>
+                          <p>{selectedTag.key ? `${selectedTag.key} · ` : ''}{selectedTag.description || selectedTag.name}</p>
+                          <p className="text-xs text-indigo-600 mt-1">Ativa: {selectedTag.active ? 'Sim' : 'Não'}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         {/* TOTAL */}
@@ -223,9 +438,21 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">TOTAL</p>
-                  <div className="text-5xl font-bold text-slate-900 mb-2">{stats.total}</div>
-                  <p className="text-sm text-slate-500">campanhas criadas</p>
+                  <p className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">TOTAL DE ENVIOS</p>
+                  <div className="text-5xl font-bold text-slate-900 mb-2">
+                    {isLoadingRequestDataset ? '...' : formatTotal(totalSent)}
+                  </div>
+                  <p className="text-sm text-slate-500">mensagens enviadas no período</p>
+                  {!isLoadingRequestDataset && (
+                    <p className="text-xs text-slate-400 mt-2">
+                      Entregues: {formatTotal(totalDelivered)} • Não entregues: {formatTotal(totalNotDelivered)}
+                    </p>
+                  )}
+                  {!isLoadingRequestsSummary && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      Análise: {formatTotal(stats.analise)} • Execução: {formatTotal(stats.execucao)} • Finalizados: {formatTotal(stats.finalizados)}
+                    </p>
+                  )}
                 </div>
                 <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center flex-shrink-0">
                   <Send className="w-7 h-7 text-blue-600" />
@@ -245,9 +472,11 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">AGENDADAS</p>
-                  <div className="text-5xl font-bold text-slate-900 mb-2">{stats.agendadas}</div>
-                  <p className="text-sm text-slate-500">prontas para envio</p>
+                  <p className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">EM ANÁLISE</p>
+                  <div className="text-5xl font-bold text-slate-900 mb-2">
+                    {isLoadingRequestsSummary ? '...' : formatTotal(stats.analise)}
+                  </div>
+                  <p className="text-sm text-slate-500">pedidos aguardando processamento</p>
                 </div>
                 <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center flex-shrink-0">
                   <Clock className="w-7 h-7 text-amber-600" />
@@ -267,9 +496,11 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">ENVIANDO</p>
-                  <div className="text-5xl font-bold text-slate-900 mb-2">{stats.enviando}</div>
-                  <p className="text-sm text-slate-500">em progresso</p>
+                  <p className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">EM EXECUÇÃO</p>
+                  <div className="text-5xl font-bold text-slate-900 mb-2">
+                    {isLoadingRequestsSummary ? '...' : formatTotal(stats.execucao)}
+                  </div>
+                  <p className="text-sm text-slate-500">pedidos em andamento</p>
                 </div>
                 <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center flex-shrink-0">
                   <TrendingUp className="w-7 h-7 text-blue-600" />
@@ -289,9 +520,14 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">CONCLUÍDAS</p>
-                  <div className="text-5xl font-bold text-slate-900 mb-2">{stats.concluidas}</div>
-                  <p className="text-sm text-slate-500">finalizadas</p>
+                  <p className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-2">FINALIZADOS</p>
+                  <div className="text-5xl font-bold text-slate-900 mb-2">
+                    {isLoadingRequestsSummary ? '...' : formatTotal(stats.finalizados)}
+                  </div>
+                  <p className="text-sm text-slate-500">encerrados com sucesso</p>
+                  {!isLoadingRequestsSummary && (
+                    <p className="text-xs text-slate-400 mt-2">Cancelados: {formatTotal(stats.cancelados)}</p>
+                  )}
                 </div>
                 <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center flex-shrink-0">
                   <CheckCircle2 className="w-7 h-7 text-green-600" />
@@ -311,7 +547,25 @@ export default function Dashboard() {
       >
         <h2 className="text-2xl font-bold text-slate-900 mb-6">Desempenho por Produto</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {desempenhoPorProduto.length === 0 ? (
+          {isLoadingRequestDataset ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="col-span-full"
+            >
+              <Card className="border-0 shadow-xl shadow-slate-200/50 bg-white/80">
+                <CardContent className="p-10 text-center space-y-3">
+                  <div className="mx-auto w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center animate-pulse">
+                    <TrendingUp className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-900">Carregando métricas</h3>
+                  <p className="text-slate-500 max-w-lg mx-auto">
+                    Buscando dados de desempenho diretamente da Printpost.
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ) : desempenhoPorProduto.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -324,8 +578,8 @@ export default function Dashboard() {
                   </div>
                   <h3 className="text-xl font-semibold text-slate-900">Sem dados disponíveis</h3>
                   <p className="text-slate-500 max-w-lg mx-auto">
-                    Não recebemos métricas de desempenho por produto para o período selecionado.
-                    Ajuste os filtros ou integre o endpoint `analytics.performancePorProduto` para popular esta visão.
+                    Não recebemos métricas da Printpost para o período selecionado.
+                    Ajuste os filtros ou verifique o endpoint `RequestDatasets/dashboard` para popular esta visão.
                   </p>
                 </CardContent>
               </Card>

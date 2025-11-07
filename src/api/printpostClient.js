@@ -11,6 +11,22 @@ function buildUrl(endpoint) {
   return `${base}${path}`;
 }
 
+function buildQueryString(params) {
+  if (!params) return '';
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    if (typeof value === 'object') {
+      query.set(key, JSON.stringify(value));
+      return;
+    }
+    query.set(key, String(value));
+  });
+
+  return query.toString();
+}
+
 function buildHeaders(token, extraHeaders = {}) {
   const headers = new Headers({
     'Content-Type': 'application/json',
@@ -52,7 +68,6 @@ async function safeFetch(url, options) {
   try {
     return await fetch(url, options);
   } catch (err) {
-    // ECONNREFUSED, DNS, etc.
     const error = new Error('Falha de conexão com o servidor');
     error.type = 'network_unreachable';
     error.cause = err;
@@ -60,44 +75,56 @@ async function safeFetch(url, options) {
   }
 }
 
-export async function loginRequest({ email, password }) {
-  const body = {
-    email: email.trim().toLowerCase(),
-    password,
+async function apiRequest(endpoint, {
+  method = 'GET',
+  token,
+  body,
+  headers,
+  params,
+  signal,
+} = {}) {
+  const queryString = buildQueryString(params);
+  const url = buildUrl(queryString ? `${endpoint}${endpoint.includes('?') ? '&' : '?'}${queryString}` : endpoint);
+
+  const options = {
+    method,
+    headers: buildHeaders(token, headers),
+    signal,
   };
 
-  const response = await safeFetch(buildUrl('/Accounts/auth'), {
-    method: 'POST',
-    headers: buildHeaders(null),
-    body: JSON.stringify(body),
-  });
+  if (body !== undefined && body !== null && method !== 'GET') {
+    options.body = typeof body === 'string' ? body : JSON.stringify(body);
+  }
 
+  const response = await safeFetch(url, options);
   return handleResponse(response);
+}
+
+export async function loginRequest({ email, password }) {
+  return apiRequest('/Accounts/auth', {
+    method: 'POST',
+    body: {
+      email: email.trim().toLowerCase(),
+      password,
+    },
+  });
 }
 
 export async function validateTwoFactorCode({ userId, code }) {
-  const body = {
-    email: userId,
-    password: code,
-  };
-
-  const response = await safeFetch(buildUrl('/Accounts/validate-code'), {
+  return apiRequest('/Accounts/validate-code', {
     method: 'POST',
-    headers: buildHeaders(null),
-    body: JSON.stringify(body),
+    body: {
+      email: userId,
+      password: code,
+    },
   });
-
-  return handleResponse(response);
 }
 
 export async function resendTwoFactorCode({ userId }) {
-  const response = await safeFetch(buildUrl('/Accounts/resend-code'), {
+  return apiRequest('/Accounts/resend-code', {
     method: 'POST',
-    headers: buildHeaders(null),
-    body: JSON.stringify({ userId }),
+    body: { userId },
   });
-
-  return handleResponse(response);
 }
 
 export async function fetchAccountProfile({ token, userId }) {
@@ -105,11 +132,9 @@ export async function fetchAccountProfile({ token, userId }) {
     throw new Error('Token e usuário são obrigatórios');
   }
 
-  const response = await safeFetch(buildUrl(`/Accounts/${userId}`), {
-    headers: buildHeaders(token),
+  return apiRequest(`/Accounts/${userId}`, {
+    token,
   });
-
-  return handleResponse(response);
 }
 
 export async function refreshAccessToken({ accessToken, refreshToken }) {
@@ -117,13 +142,166 @@ export async function refreshAccessToken({ accessToken, refreshToken }) {
     throw new Error('Refresh token obrigatório');
   }
 
-  const response = await safeFetch(buildUrl('/Accounts/refresh-token'), {
+  return apiRequest('/Accounts/refresh-token', {
     method: 'POST',
-    headers: buildHeaders(accessToken),
-    body: JSON.stringify({ refreshToken }),
+    token: accessToken,
+    body: { refreshToken },
   });
+}
 
-  return handleResponse(response);
+export async function fetchRequestTags({
+  token,
+  search,
+  active,
+  limit,
+  skip,
+  filter,
+  signal,
+} = {}) {
+  if (!token) {
+    throw new Error('Token obrigatório para listar tags');
+  }
+
+  const params = {};
+  const where = { ...filter };
+
+  if (active !== undefined) {
+    where.active = active;
+  }
+
+  if (search) {
+    where.description = { like: `%${search}%` };
+  }
+
+  if (Object.keys(where).length) {
+    params.filter = { where };
+  }
+
+  if (limit !== undefined || skip !== undefined) {
+    params.filter = {
+      ...(params.filter || {}),
+      limit,
+      skip,
+    };
+  }
+
+  return apiRequest('/RequestTags/find', {
+    token,
+    params,
+    signal,
+  });
+}
+
+export async function fetchCostCenters({
+  token,
+  active,
+  limit,
+  skip,
+  signal,
+} = {}) {
+  if (!token) {
+    throw new Error('Token obrigatório para listar centros de custo');
+  }
+
+  const params = {};
+
+  if (active !== undefined) {
+    params.active = active;
+  }
+
+  if (limit !== undefined) {
+    params.limit = limit;
+  }
+
+  if (skip !== undefined) {
+    params.skip = skip;
+  }
+
+  return apiRequest('/CostCenters/list', {
+    token,
+    params,
+    signal,
+  });
+}
+
+export async function fetchRequestsDashboard({
+  token,
+  from,
+  to,
+  campaignId,
+  costCenterId,
+  signal,
+} = {}) {
+  if (!token) {
+    throw new Error('Token obrigatório para resumo de pedidos');
+  }
+
+  let endpoint = '/Requests/dashboard';
+
+  const filters = new URLSearchParams();
+  let whereIndex = 0;
+
+  if (from) {
+    filters.set(`filter[where][and][${whereIndex++}][createdAt][gte]`, from);
+  }
+
+  if (to) {
+    filters.set(`filter[where][and][${whereIndex++}][createdAt][lte]`, to);
+  }
+
+  if (campaignId && campaignId !== 'todas') {
+    filters.set(`filter[where][and][${whereIndex++}][campaignId]`, campaignId);
+  }
+
+  if (costCenterId) {
+    filters.set(`filter[where][and][${whereIndex++}][costCenterId]`, costCenterId);
+  }
+
+  const serializedFilters = filters.toString();
+  if (serializedFilters) {
+    endpoint = `${endpoint}?${serializedFilters}`;
+  }
+
+  return apiRequest(endpoint, {
+    token,
+    signal,
+  });
+}
+
+export async function fetchRequestDatasetsDashboard({
+  token,
+  from,
+  to,
+  campaignId,
+  costCenterId,
+  signal,
+} = {}) {
+  if (!token) {
+    throw new Error('Token obrigatório para detalhar pedidos');
+  }
+
+  if (!from || !to) {
+    throw new Error('Intervalo de datas é obrigatório');
+  }
+
+  const query = new URLSearchParams();
+  let whereIndex = 0;
+
+  query.set(`filter[where][and][${whereIndex++}][createdAt][gte]`, from);
+  query.set(`filter[where][and][${whereIndex++}][createdAt][lte]`, to);
+
+  if (campaignId && campaignId !== 'todas') {
+    query.set(`filter[where][and][${whereIndex++}][campaignId]`, campaignId);
+  }
+
+  if (costCenterId) {
+    query.set(`filter[where][and][${whereIndex++}][costCenterId]`, costCenterId);
+  }
+
+  return apiRequest(`/RequestDatasets/dashboard?${query.toString()}`, {
+    token,
+    signal,
+  });
 }
 
 export function resolveApiBaseUrl() {
