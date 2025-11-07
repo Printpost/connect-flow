@@ -6,9 +6,11 @@ import {
   resendTwoFactorCode,
   validateTwoFactorCode,
 } from '@/api/printpostClient';
+import { externalLogin } from '@/api/printpostExternalAuth';
 import { createPageUrl } from '@/utils';
 
-const AuthContext = createContext();
+// Provide explicit default to satisfy lint/type expectations
+const AuthContext = createContext(null);
 
 const STORAGE_KEY = 'printpost_auth_session';
 
@@ -237,11 +239,13 @@ export const AuthProvider = ({ children }) => {
     hydrateFromStorage();
   }, [hydrateFromStorage]);
 
-  const login = useCallback(async ({ email, password }) => {
+  const login = useCallback(async ({ email, password, useExternal = false }) => {
     setAuthError(null);
 
     try {
-      const payload = await loginRequest({ email, password });
+      const payload = useExternal
+        ? await externalLogin({ email, password })
+        : await loginRequest({ email, password });
 
       if (payload?.twoFactor) {
         const masked = payload?.account?.emailMask || null;
@@ -257,6 +261,7 @@ export const AuthProvider = ({ children }) => {
         };
       }
 
+      // External API may return a slightly different shape; normalize minimal fields
       persistSession(payload);
       return { success: true };
     } catch (error) {
