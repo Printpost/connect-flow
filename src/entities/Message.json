@@ -1,0 +1,38 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "conversation_id": {
+      "type": "string",
+      "description": "ID da conversa"
+    },
+    "sender": {
+      "type": "string",
+      "enum": [
+        "cliente",
+        "agente"
+      ],
+      "description": "Quem enviou a mensagem"
+    },
+    "content": {
+      "type": "string",
+      "description": "Conte\u00fado da mensagem"
+    },
+    "sent_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de envio"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se foi lida"
+    }
+  },
+  "required": [
+    "conversation_id",
+    "sender",
+    "content",
+    "sent_date"
+  ]
+}

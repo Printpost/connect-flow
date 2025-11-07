@@ -1,0 +1,294 @@
+{
+  "name": "Campaign",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome da campanha"
+    },
+    "centro_de_custo": {
+      "type": "string",
+      "description": "Centro de custo da campanha"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "campanha",
+        "automacao",
+        "envio_rapido"
+      ],
+      "default": "campanha",
+      "description": "Tipo de envio"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "rascunho",
+        "agendada",
+        "enviando",
+        "concluida",
+        "pausada"
+      ],
+      "default": "rascunho",
+      "description": "Status da campanha"
+    },
+    "channels": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "email",
+          "sms",
+          "whatsapp",
+          "rcs",
+          "carta"
+        ]
+      },
+      "description": "Canais de envio selecionados"
+    },
+    "recipient_source": {
+      "type": "string",
+      "enum": [
+        "excel",
+        "csv",
+        "lista_contatos",
+        "manual"
+      ],
+      "description": "Origem dos destinat\u00e1rios"
+    },
+    "recipient_file_url": {
+      "type": "string",
+      "description": "URL do arquivo Excel/CSV com destinat\u00e1rios"
+    },
+    "recipient_list_name": {
+      "type": "string",
+      "description": "Nome da lista de contatos selecionada"
+    },
+    "manual_recipients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Destinat\u00e1rios inseridos manualmente"
+    },
+    "scheduled_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de agendamento"
+    },
+    "trigger_event": {
+      "type": "string",
+      "description": "Evento que aciona a automa\u00e7\u00e3o"
+    },
+    "total_recipients": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de destinat\u00e1rios"
+    },
+    "sent_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade enviada"
+    },
+    "email_content": {
+      "type": "object",
+      "properties": {
+        "subject": {
+          "type": "string"
+        },
+        "sender_email": {
+          "type": "string"
+        },
+        "reply_to_email": {
+          "type": "string"
+        },
+        "schedule_type": {
+          "type": "string",
+          "enum": [
+            "imediato",
+            "agendado",
+            "personalizado",
+            "preditivo"
+          ]
+        },
+        "scheduled_datetime": {
+          "type": "string"
+        },
+        "monitoring_enabled": {
+          "type": "boolean"
+        },
+        "automation_enabled": {
+          "type": "boolean"
+        },
+        "template_source": {
+          "type": "string",
+          "enum": [
+            "do_zero",
+            "biblioteca",
+            "ia",
+            "salvos",
+            "duplicar"
+          ]
+        },
+        "body": {
+          "type": "string"
+        }
+      }
+    },
+    "sms_content": {
+      "type": "object",
+      "properties": {
+        "schedule_type": {
+          "type": "string",
+          "enum": [
+            "imediato",
+            "agendado",
+            "personalizado",
+            "preditivo"
+          ]
+        },
+        "scheduled_datetime": {
+          "type": "string"
+        },
+        "monitoring_enabled": {
+          "type": "boolean"
+        },
+        "automation_enabled": {
+          "type": "boolean"
+        },
+        "template_source": {
+          "type": "string",
+          "enum": [
+            "do_zero",
+            "biblioteca",
+            "ia",
+            "salvos",
+            "duplicar"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "whatsapp_content": {
+      "type": "object",
+      "properties": {
+        "schedule_type": {
+          "type": "string",
+          "enum": [
+            "imediato",
+            "agendado",
+            "personalizado",
+            "preditivo"
+          ]
+        },
+        "scheduled_datetime": {
+          "type": "string"
+        },
+        "monitoring_enabled": {
+          "type": "boolean"
+        },
+        "automation_enabled": {
+          "type": "boolean"
+        },
+        "connected_channel": {
+          "type": "string"
+        },
+        "template_source": {
+          "type": "string",
+          "enum": [
+            "do_zero",
+            "biblioteca",
+            "ia",
+            "salvos",
+            "duplicar",
+            "meta_templates"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "media_url": {
+          "type": "string"
+        }
+      }
+    },
+    "rcs_content": {
+      "type": "object",
+      "properties": {
+        "schedule_type": {
+          "type": "string",
+          "enum": [
+            "imediato",
+            "agendado",
+            "personalizado",
+            "preditivo"
+          ]
+        },
+        "scheduled_datetime": {
+          "type": "string"
+        },
+        "monitoring_enabled": {
+          "type": "boolean"
+        },
+        "automation_enabled": {
+          "type": "boolean"
+        },
+        "connected_channel": {
+          "type": "string"
+        },
+        "template_source": {
+          "type": "string",
+          "enum": [
+            "do_zero",
+            "biblioteca",
+            "ia",
+            "salvos",
+            "duplicar",
+            "google_templates"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "media_url": {
+          "type": "string"
+        }
+      }
+    },
+    "carta_content": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [
+    "name",
+    "channels",
+    "type"
+  ]
+}

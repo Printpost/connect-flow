@@ -1,0 +1,32 @@
+{
+  "name": "Blacklist",
+  "type": "object",
+  "properties": {
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "email",
+        "telefone",
+        "endereco"
+      ],
+      "description": "Tipo de bloqueio"
+    },
+    "valor": {
+      "type": "string",
+      "description": "Valor bloqueado (email, telefone ou endere\u00e7o)"
+    },
+    "motivo": {
+      "type": "string",
+      "description": "Motivo do bloqueio"
+    },
+    "data_bloqueio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data do bloqueio"
+    }
+  },
+  "required": [
+    "tipo",
+    "valor"
+  ]
+}

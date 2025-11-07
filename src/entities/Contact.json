@@ -1,0 +1,92 @@
+{
+  "name": "Contact",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do contato"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email do contato"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Telefone do contato"
+    },
+    "avatar_url": {
+      "type": "string",
+      "description": "URL da foto do contato"
+    },
+    "total_interactions": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de intera\u00e7\u00f5es"
+    },
+    "best_channel": {
+      "type": "string",
+      "enum": [
+        "email",
+        "sms",
+        "whatsapp",
+        "rcs",
+        "telefone",
+        "chat",
+        "video"
+      ],
+      "description": "Canal com melhor engajamento"
+    },
+    "success_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "\u00cdndice de sucesso (0-100)"
+    },
+    "engagement_level": {
+      "type": "string",
+      "enum": [
+        "alto",
+        "medio",
+        "baixo"
+      ],
+      "default": "medio",
+      "description": "N\u00edvel de engajamento"
+    },
+    "channel_stats": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "number",
+          "default": 0
+        },
+        "sms": {
+          "type": "number",
+          "default": 0
+        },
+        "whatsapp": {
+          "type": "number",
+          "default": 0
+        },
+        "rcs": {
+          "type": "number",
+          "default": 0
+        },
+        "telefone": {
+          "type": "number",
+          "default": 0
+        },
+        "chat": {
+          "type": "number",
+          "default": 0
+        },
+        "video": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "description": "Estat\u00edsticas por canal"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

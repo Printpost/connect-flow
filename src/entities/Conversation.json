@@ -1,0 +1,60 @@
+{
+  "name": "Conversation",
+  "type": "object",
+  "properties": {
+    "contact_name": {
+      "type": "string",
+      "description": "Nome do contato"
+    },
+    "contact_avatar": {
+      "type": "string",
+      "description": "URL do avatar do contato"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "whatsapp",
+        "email",
+        "sms",
+        "chat",
+        "telefone"
+      ],
+      "description": "Canal da conversa"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Assunto da conversa"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "em andamento",
+        "aberta",
+        "resolvida",
+        "fechada"
+      ],
+      "default": "aberta",
+      "description": "Status da conversa"
+    },
+    "last_message_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data da \u00faltima mensagem"
+    },
+    "message_count": {
+      "type": "number",
+      "default": 0,
+      "description": "N\u00famero de mensagens"
+    },
+    "unread": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se tem mensagens n\u00e3o lidas"
+    }
+  },
+  "required": [
+    "contact_name",
+    "channel",
+    "subject"
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "name": "CentroDeCusto",
+  "type": "object",
+  "properties": {
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "pessoa_juridica",
+        "pessoa_fisica"
+      ],
+      "description": "Tipo de pessoa"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome"
+    },
+    "razao_social": {
+      "type": "string",
+      "description": "Raz\u00e3o social (PJ)"
+    },
+    "cnpj": {
+      "type": "string",
+      "description": "CNPJ (PJ)"
+    },
+    "inscricao_estadual": {
+      "type": "string",
+      "description": "Inscri\u00e7\u00e3o estadual (PJ)"
+    },
+    "isento_inscricao": {
+      "type": "boolean",
+      "default": false,
+      "description": "Isento de inscri\u00e7\u00e3o estadual"
+    },
+    "cpf": {
+      "type": "string",
+      "description": "CPF (PF)"
+    },
+    "cep": {
+      "type": "string",
+      "description": "CEP"
+    },
+    "endereco": {
+      "type": "string",
+      "description": "Endere\u00e7o completo"
+    },
+    "telefone_fixo": {
+      "type": "string",
+      "description": "Telefone fixo"
+    },
+    "telefone_celular": {
+      "type": "string",
+      "description": "Telefone celular"
+    },
+    "email": {
+      "type": "string",
+      "description": "E-mail"
+    }
+  },
+  "required": [
+    "tipo",
+    "nome"
+  ]
+}

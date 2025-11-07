@@ -1,0 +1,44 @@
+{
+  "name": "ContatoLista",
+  "type": "object",
+  "properties": {
+    "lista_id": {
+      "type": "string",
+      "description": "ID da lista"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome do contato"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email"
+    },
+    "telefone": {
+      "type": "string",
+      "description": "Telefone"
+    },
+    "empresa": {
+      "type": "string",
+      "description": "Empresa"
+    },
+    "status_entrega": {
+      "type": "string",
+      "enum": [
+        "entregue",
+        "pendente",
+        "falhado"
+      ],
+      "description": "Status de entrega"
+    },
+    "data_adicao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de adi\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "lista_id",
+    "nome"
+  ]
+}
