@@ -44,6 +44,14 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       // Allow all hosts - essential for Modal tunnel URLs
       allowedHosts: true,
+      proxy: {
+        // Proxy API calls during development to avoid CORS issues
+        '/api': {
+          target: process.env.VITE_DEV_API_TARGET || 'http://localhost:3001',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
       watch: {
         // Enable polling for better file change detection in containers
         usePolling: true,
