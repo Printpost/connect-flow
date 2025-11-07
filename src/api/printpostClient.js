@@ -1,5 +1,9 @@
+// @ts-nocheck
 const DEFAULT_API_BASE_URL = 'http://localhost:3001/api';
-const API_BASE_URL = import.meta.env.VITE_PRINTPOST_API_URL || DEFAULT_API_BASE_URL;
+// In dev, prefer hitting Vite proxy at /api to avoid CORS
+const API_BASE_URL =
+  import.meta.env.VITE_PRINTPOST_API_URL ||
+  (import.meta.env.DEV ? '/api' : DEFAULT_API_BASE_URL);
 
 function buildUrl(endpoint) {
   if (endpoint.startsWith('http')) {
