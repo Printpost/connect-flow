@@ -51,13 +51,25 @@ async function handleResponse(response) {
   return payload;
 }
 
+async function safeFetch(url, options) {
+  try {
+    return await fetch(url, options);
+  } catch (err) {
+    // ECONNREFUSED, DNS, etc.
+    const error = new Error('Falha de conexão com o servidor');
+    error.type = 'network_unreachable';
+    error.cause = err;
+    throw error;
+  }
+}
+
 export async function loginRequest({ email, password }) {
   const body = {
     email: email.trim().toLowerCase(),
     password,
   };
 
-  const response = await fetch(buildUrl('/accounts/auth'), {
+  const response = await safeFetch(buildUrl('/accounts/auth'), {
     method: 'POST',
     headers: buildHeaders(null),
     body: JSON.stringify(body),
@@ -72,7 +84,7 @@ export async function validateTwoFactorCode({ userId, code }) {
     password: code,
   };
 
-  const response = await fetch(buildUrl('/accounts/validate-code'), {
+  const response = await safeFetch(buildUrl('/accounts/validate-code'), {
     method: 'POST',
     headers: buildHeaders(null),
     body: JSON.stringify(body),
@@ -82,7 +94,7 @@ export async function validateTwoFactorCode({ userId, code }) {
 }
 
 export async function resendTwoFactorCode({ userId }) {
-  const response = await fetch(buildUrl('/accounts/resend-code'), {
+  const response = await safeFetch(buildUrl('/accounts/resend-code'), {
     method: 'POST',
     headers: buildHeaders(null),
     body: JSON.stringify({ userId }),
@@ -96,7 +108,7 @@ export async function fetchAccountProfile({ token, userId }) {
     throw new Error('Token e usuário são obrigatórios');
   }
 
-  const response = await fetch(buildUrl(`/accounts/${userId}`), {
+  const response = await safeFetch(buildUrl(`/accounts/${userId}`), {
     headers: buildHeaders(token),
   });
 
@@ -108,7 +120,7 @@ export async function refreshAccessToken({ accessToken, refreshToken }) {
     throw new Error('Refresh token obrigatório');
   }
 
-  const response = await fetch(buildUrl('/accounts/refresh-token'), {
+  const response = await safeFetch(buildUrl('/accounts/refresh-token'), {
     method: 'POST',
     headers: buildHeaders(accessToken),
     body: JSON.stringify({ refreshToken }),
