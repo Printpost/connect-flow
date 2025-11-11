@@ -304,6 +304,81 @@ export async function fetchRequestDatasetsDashboard({
   });
 }
 
+export async function fetchCampaignIndicators({
+  token,
+  from,
+  signal,
+} = {}) {
+  if (!token) {
+    throw new Error('Token obrigatório para indicadores de campanhas');
+  }
+
+  const params = new URLSearchParams({
+    'mp': 'true',
+    'filter[where][status][nin]': 'Pendente',
+    'filter[where][title][nlike]': 'envio api',
+    'filter[where][title][options]': 'i',
+    'filter[include]': 'wallet',
+  });
+
+  // Add second nin filter for "Em Pendente"
+  params.append('filter[where][status][nin]', 'Em Pendente');
+
+  if (from) {
+    params.set('filter[where][createdAt][gte]', from);
+  }
+
+  return apiRequest(`/Requests/indicators?${params.toString()}`, {
+    token,
+    signal,
+  });
+}
+
+export async function fetchCampaignsList({
+  token,
+  from,
+  status,
+  limit = 20,
+  page = 1,
+  signal,
+} = {}) {
+  if (!token) {
+    throw new Error('Token obrigatório para listar campanhas');
+  }
+
+  const params = new URLSearchParams({
+    'mp': 'true',
+    'filter[where][requestRulerId]': 'null',
+    'filter[where][requestRulerMultichannelId]': 'null',
+    'filter[where][title][nlike]': 'envio api',
+    'filter[where][title][options]': 'i',
+    'filter[order]': 'id DESC',
+    'filter[limit]': String(limit),
+    'filter[include]': 'wallet',
+  });
+
+  // Add nin filters for Pendente
+  params.append('filter[where][status][nin]', 'Pendente');
+  params.append('filter[where][status][nin]', 'Em Pendente');
+
+  // Add includes
+  params.append('filter[include]', 'account');
+  params.append('filter[include]', 'files');
+
+  if (from) {
+    params.set('filter[where][createdAt][gte]', from);
+  }
+
+  if (status && status !== 'todas') {
+    params.set('filter[where][status]', status);
+  }
+
+  return apiRequest(`/Requests/list?${params.toString()}`, {
+    token,
+    signal,
+  });
+}
+
 export function resolveApiBaseUrl() {
   return API_BASE_URL;
 }

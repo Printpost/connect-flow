@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+import { fetchCampaignIndicators, fetchCampaignsList } from "@/api/printpostClient";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -94,6 +96,20 @@ const statusConfig = {
   }
 };
 
+// Map Printpost API status to internal status
+const mapPrintpostStatus = (apiStatus) => {
+  const statusMap = {
+    'Análise': 'em_analise',
+    'Execução': 'em_execucao',
+    'Enviando': 'enviando',
+    'Concluído': 'concluida',
+    'Solicitado': 'agendada',
+    'Pausado': 'pausada',
+    'Agendado': 'agendada'
+  };
+  return statusMap[apiStatus] || 'em_analise';
+};
+
 export default function Campanhas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("todas");
@@ -104,12 +120,52 @@ export default function Campanhas() {
   const [showFilters, setShowFilters] = useState(true);
 
   const navigate = useNavigate();
+  const { token: authToken } = useAuth();
 
-  const { data: campaigns, isLoading } = useQuery({
-    queryKey: ['campaigns'],
-    queryFn: () => base44.entities.Campaign.list('-created_date'),
-    initialData: [],
+  // Fetch campaign indicators
+  const { data: indicators } = useQuery({
+    queryKey: ['campaign-indicators', dataInicio],
+    queryFn: () => fetchCampaignIndicators({
+      token: authToken,
+      from: dataInicio || format(new Date(), "yyyy-MM-dd") + "T00:00:00-03:00",
+    }),
+    enabled: !!authToken,
+    initialData: { analise: { quantity: 0 }, execucao: { quantity: 0 }, solicitado: { quantity: 0 } },
   });
+
+  // Fetch campaigns list
+  const { data: campaignsResponse, isLoading } = useQuery({
+    queryKey: ['campaigns-list', filterStatus, dataInicio],
+    queryFn: () => fetchCampaignsList({
+      token: authToken,
+      from: dataInicio || format(new Date(), "yyyy-MM-dd") + "T00:00:00-03:00",
+      status: filterStatus !== 'todas' ? filterStatus : undefined,
+      limit: 100,
+    }),
+    enabled: !!authToken,
+    initialData: { data: [], total: 0 },
+  });
+
+  // Normalize campaigns data from Printpost API
+  const campaigns = useMemo(() => {
+    if (!campaignsResponse?.data) return [];
+    
+    return campaignsResponse.data.map(campaign => ({
+      id: campaign.number || campaign.id,
+      name: campaign.title,
+      status: mapPrintpostStatus(campaign.status),
+      created_date: campaign.createdAt,
+      numero_lote: campaign.number,
+      channels: Object.keys(campaign.quantity || {}).filter(ch => campaign.quantity[ch] > 0),
+      total_recipients: Object.values(campaign.quantity || {}).reduce((sum, val) => sum + val, 0),
+      sent: campaign.sent,
+      processing: campaign.processing,
+      error: campaign.error,
+      totalCost: campaign.totalCost,
+      paymentStatus: campaign.paymentStatus,
+      originalData: campaign // Keep original for reference
+    }));
+  }, [campaignsResponse]);
 
   const handleDuplicar = (campaign) => {
     alert(`Duplicar campanha: ${campaign.name}`);
@@ -148,16 +204,39 @@ export default function Campanhas() {
     return matchesSearch && matchesStatus && matchesChannel && matchesDataInicio && matchesDataFim;
   });
 
-  // Calcular estatísticas por status
-  const statusStats = Object.keys(statusConfig).reduce((acc, status) => {
-    const campanhasDoStatus = campaigns.filter(c => c.status === status);
-    const totalValor = campanhasDoStatus.reduce((sum, c) => sum + (c.total_recipients || 0), 0);
-    acc[status] = {
-      count: campanhasDoStatus.length,
-      total: totalValor
-    };
-    return acc;
-  }, {});
+  // Calcular estatísticas por status usando indicadores da API quando disponível
+  const statusStats = useMemo(() => {
+    const stats = {};
+    
+    // Use indicators from API if available
+    if (indicators) {
+      stats.em_analise = {
+        count: indicators.analise?.quantity || 0,
+        total: indicators.analise?.total || 0
+      };
+      stats.em_execucao = {
+        count: indicators.execucao?.quantity || 0,
+        total: indicators.execucao?.total || 0
+      };
+      stats.agendada = {
+        count: indicators.solicitado?.quantity || 0,
+        total: indicators.solicitado?.total || 0
+      };
+    }
+    
+    // Calculate from filtered campaigns for other statuses or as fallback
+    Object.keys(statusConfig).forEach(status => {
+      if (!stats[status]) {
+        const campanhasDoStatus = campaigns.filter(c => c.status === status);
+        stats[status] = {
+          count: campanhasDoStatus.length,
+          total: campanhasDoStatus.reduce((sum, c) => sum + (c.total_recipients || 0), 0)
+        };
+      }
+    });
+    
+    return stats;
+  }, [campaigns, indicators]);
 
   const activeFiltersCount = [
     searchTerm,
