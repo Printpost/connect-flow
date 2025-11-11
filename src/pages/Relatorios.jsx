@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import {
   Calendar,
   ChevronRight,
@@ -69,6 +71,7 @@ const formatToPrintpostDateTime = (date, endOfDay = false) => {
 };
 
 export default function Relatorios() {
+  const navigate = useNavigate();
   const [filtros, setFiltros] = useState({
     dataInicio: "",
     dataFim: "",
@@ -388,6 +391,38 @@ export default function Relatorios() {
             Exportar PDF
           </Button>
         </div>
+
+        {/* Card de Acesso Rápido - Cartas Digitalizadas */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-6"
+        >
+          <Card 
+            className="border-0 shadow-xl shadow-purple-200/50 bg-gradient-to-r from-purple-500 to-purple-600 hover:shadow-2xl hover:shadow-purple-200/60 transition-all cursor-pointer group overflow-hidden"
+            onClick={() => navigate(createPageUrl("ConsultaCartas"))}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <FileText className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-1 group-hover:translate-x-1 transition-transform">
+                      Consulta de Cartas Digitalizadas
+                    </h3>
+                    <p className="text-white/90 text-sm">
+                      Visualize imagens, status de entrega e análise de SLA de cartas físicas
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-8 h-8 text-white/80 group-hover:text-white group-hover:translate-x-2 transition-all" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         <Card className="border-0 shadow-xl shadow-slate-200/50 bg-white mb-6">
           <CardHeader>

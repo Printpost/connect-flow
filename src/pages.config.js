@@ -25,6 +25,7 @@ import DetalhamentoCampanha from './pages/DetalhamentoCampanha';
 import Automacoes from './pages/Automacoes';
 import Comercial from './pages/Comercial';
 import Financeiro from './pages/Financeiro';
+import ConsultaCartas from './pages/ConsultaCartas';
 import Layout from './Layout.jsx';
 import Login from './pages/Login';
 import CentralRetorno from './pages/CentralRetorno';
@@ -59,6 +60,7 @@ export const PAGES = {
     "Automacoes": Automacoes,
     "Comercial": Comercial,
     "Financeiro": Financeiro,
+    "ConsultaCartas": ConsultaCartas,
     "CentralRetorno": CentralRetorno,
 }
 
