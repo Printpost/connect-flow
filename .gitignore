@@ -1,6 +1,20 @@
-#env
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+dist-ssr
+build
+.next
+
+# Environment
 .env
 .env.*
+*.local
+.venv
+
+# Config
+.config
 
 # Logs
 logs
@@ -10,11 +24,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
 
 # Editor directories and files
 .vscode/*
@@ -26,5 +35,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.env
+
+# Project specific
 backend-main/
