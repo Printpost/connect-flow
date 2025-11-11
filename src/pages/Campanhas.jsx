@@ -188,8 +188,8 @@ export default function Campanhas() {
   const filteredCampaigns = campaigns.filter(campaign => {
     const matchesSearch = !searchTerm ||
       campaign.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      campaign.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      campaign.numero_lote?.toLowerCase().includes(searchTerm.toLowerCase());
+      String(campaign.id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(campaign.numero_lote || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = filterStatus === "todas" || campaign.status === filterStatus;
     const matchesChannel = filterChannel === "todos" ||
@@ -614,7 +614,7 @@ export default function Campanhas() {
                             </div>
                             {campaign.id && (
                               <div className="text-xs text-slate-500">
-                                ID: {campaign.id.slice(0, 8)}
+                                ID: {String(campaign.id).slice(0, 8)}
                               </div>
                             )}
                           </div>
@@ -699,7 +699,7 @@ export default function Campanhas() {
                     return (
                       <TableRow key={campaign.id} className="hover:bg-slate-50 transition-colors">
                         <TableCell className="font-mono text-xs text-slate-600">
-                          {campaign.id?.slice(0, 8) || "-"}
+                          {campaign.id ? String(campaign.id).slice(0, 8) : "-"}
                         </TableCell>
 
                         <TableCell>
