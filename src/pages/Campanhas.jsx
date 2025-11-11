@@ -623,7 +623,7 @@ export default function Campanhas() {
                             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Canais:</span>
                             <div className="flex gap-2">
                               {campaign.channels?.map((channel) => {
-                                const Icon = channelIcons[channel];
+                                const Icon = channelIcons[channel] || FileText;
                                 return (
                                   <div
                                     key={channel}
