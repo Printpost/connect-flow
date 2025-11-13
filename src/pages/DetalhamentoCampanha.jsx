@@ -135,30 +135,38 @@ export default function DetalhamentoCampanha() {
   const status = statusConfig[mapStatus(campaign.status)] || statusConfig.rascunho;
   const StatusIcon = status.icon;
 
-  // Calculate totals from statistics (emailAll, cartaAll, smsAll, whatsappAll, etc.)
-  // The API returns channel-specific stats like: emailAll, emailReceive, emailNotReceive
+  // Calculate totals from statistics in the return array
+  // The API returns an array like: [{cartaAll: 0, cartaReceive: 0, cartaNotReceive: 0}, {emailAll: 14867, ...}]
   const getChannelStats = () => {
-    const stats = campaignResponse || {};
+    const returnArray = campaignResponse?.return || [];
+    console.log('📊 Campaign Response:', campaignResponse);
+    console.log('📊 Return Array:', returnArray);
     let totalEnvios = 0;
     let totalEntregues = 0;
     let totalNaoEntregues = 0;
 
-    // Check for each channel type
-    ['email', 'carta', 'sms', 'whatsapp'].forEach(channel => {
-      const allKey = `${channel}All`;
-      const receiveKey = `${channel}Receive`;
-      const notReceiveKey = `${channel}NotReceive`;
-      
-      if (stats[allKey]) totalEnvios += stats[allKey];
-      if (stats[receiveKey]) totalEntregues += stats[receiveKey];
-      if (stats[notReceiveKey]) totalNaoEntregues += stats[notReceiveKey];
+    // The return array contains objects, one per channel
+    returnArray.forEach(channelStats => {
+      console.log('📊 Processing channel stats:', channelStats);
+      Object.keys(channelStats).forEach(key => {
+        if (key.endsWith('All')) {
+          totalEnvios += channelStats[key] || 0;
+        } else if (key.endsWith('Receive')) {
+          totalEntregues += channelStats[key] || 0;
+        } else if (key.endsWith('NotReceive')) {
+          totalNaoEntregues += channelStats[key] || 0;
+        }
+      });
     });
+
+    console.log('📊 Calculated Stats:', { totalEnvios, totalEntregues, totalNaoEntregues });
 
     // Fallback to quantity if stats not available
     if (totalEnvios === 0 && campaign.quantity) {
       totalEnvios = Object.values(campaign.quantity).reduce((sum, val) => sum + val, 0);
       totalEntregues = campaign.sent || Math.floor(totalEnvios * 0.92);
       totalNaoEntregues = totalEnvios - totalEntregues;
+      console.log('📊 Using fallback from quantity:', { totalEnvios, totalEntregues, totalNaoEntregues });
     }
 
     return { totalEnvios, totalEntregues, totalNaoEntregues };
