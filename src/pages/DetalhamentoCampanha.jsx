@@ -135,10 +135,37 @@ export default function DetalhamentoCampanha() {
   const status = statusConfig[mapStatus(campaign.status)] || statusConfig.rascunho;
   const StatusIcon = status.icon;
 
-  // Calculate totals from quantity object
-  const totalEnvios = campaign.quantity ? Object.values(campaign.quantity).reduce((sum, val) => sum + val, 0) : 0;
-  const totalEntregues = campaign.sent || Math.floor(totalEnvios * 0.92);
-  const totalNaoEntregues = totalEnvios - totalEntregues;
+  // Calculate totals from statistics (emailAll, cartaAll, smsAll, whatsappAll, etc.)
+  // The API returns channel-specific stats like: emailAll, emailReceive, emailNotReceive
+  const getChannelStats = () => {
+    const stats = campaignResponse || {};
+    let totalEnvios = 0;
+    let totalEntregues = 0;
+    let totalNaoEntregues = 0;
+
+    // Check for each channel type
+    ['email', 'carta', 'sms', 'whatsapp'].forEach(channel => {
+      const allKey = `${channel}All`;
+      const receiveKey = `${channel}Receive`;
+      const notReceiveKey = `${channel}NotReceive`;
+      
+      if (stats[allKey]) totalEnvios += stats[allKey];
+      if (stats[receiveKey]) totalEntregues += stats[receiveKey];
+      if (stats[notReceiveKey]) totalNaoEntregues += stats[notReceiveKey];
+    });
+
+    // Fallback to quantity if stats not available
+    if (totalEnvios === 0 && campaign.quantity) {
+      totalEnvios = Object.values(campaign.quantity).reduce((sum, val) => sum + val, 0);
+      totalEntregues = campaign.sent || Math.floor(totalEnvios * 0.92);
+      totalNaoEntregues = totalEnvios - totalEntregues;
+    }
+
+    return { totalEnvios, totalEntregues, totalNaoEntregues };
+  };
+
+  const { totalEnvios, totalEntregues, totalNaoEntregues } = getChannelStats();
+  const progressPercent = totalEnvios > 0 ? Math.round((totalEntregues / totalEnvios) * 100) : 0;
 
   const chartData = [
     { name: 'Total Enviados', value: totalEnvios, color: COLORS.enviados },
