@@ -151,10 +151,11 @@ export default function DetalhamentoCampanha() {
       Object.keys(channelStats).forEach(key => {
         if (key.endsWith('All')) {
           totalEnvios += channelStats[key] || 0;
+        } else if (key.endsWith('NotReceive')) {
+          // Check NotReceive BEFORE Receive to avoid matching both
+          totalNaoEntregues += channelStats[key] || 0;
         } else if (key.endsWith('Receive')) {
           totalEntregues += channelStats[key] || 0;
-        } else if (key.endsWith('NotReceive')) {
-          totalNaoEntregues += channelStats[key] || 0;
         }
       });
     });
