@@ -1,5 +1,7 @@
 import React from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+import { fetchCampaignDetail } from "@/api/printpostClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -44,15 +46,18 @@ export default function DetalhamentoCampanha() {
   const [searchParams] = useSearchParams();
   const campaignId = searchParams.get('id');
   const queryClient = useQueryClient();
+  const { token: authToken } = useAuth();
 
-  const { data: campaign, isLoading } = useQuery({
-    queryKey: ['campaign', campaignId],
-    queryFn: async () => {
-      const campaigns = await base44.entities.Campaign.list();
-      return campaigns.find(c => c.id === campaignId);
-    },
-    enabled: !!campaignId,
+  const { data: campaignResponse, isLoading } = useQuery({
+    queryKey: ['campaign-detail', campaignId],
+    queryFn: () => fetchCampaignDetail({
+      token: authToken,
+      campaignId: campaignId,
+    }),
+    enabled: !!campaignId && !!authToken,
   });
+
+  const campaign = campaignResponse?.request;
 
   const pausarEnvioMutation = useMutation({
     mutationFn: () => base44.entities.Campaign.update(campaignId, { status: 'pausada' }),
@@ -112,12 +117,27 @@ export default function DetalhamentoCampanha() {
     );
   }
 
-  const status = statusConfig[campaign.status] || statusConfig.rascunho;
+  // Map Printpost API status to statusConfig
+  const mapStatus = (apiStatus) => {
+    const statusMap = {
+      'Análise': 'rascunho',
+      'Execução': 'enviando',
+      'Enviando': 'enviando',
+      'Finalizado': 'concluida',
+      'Concluído': 'concluida',
+      'Solicitado': 'agendada',
+      'Pausado': 'pausada',
+      'Agendado': 'agendada'
+    };
+    return statusMap[apiStatus] || 'rascunho';
+  };
+
+  const status = statusConfig[mapStatus(campaign.status)] || statusConfig.rascunho;
   const StatusIcon = status.icon;
 
-  // Dados simulados para o gráfico
-  const totalEnvios = campaign.total_recipients || 0;
-  const totalEntregues = campaign.sent_count || Math.floor(totalEnvios * 0.92);
+  // Calculate totals from quantity object
+  const totalEnvios = campaign.quantity ? Object.values(campaign.quantity).reduce((sum, val) => sum + val, 0) : 0;
+  const totalEntregues = campaign.sent || Math.floor(totalEnvios * 0.92);
   const totalNaoEntregues = totalEnvios - totalEntregues;
 
   const chartData = [
@@ -182,13 +202,13 @@ export default function DetalhamentoCampanha() {
                       </div>
                       <div>
                         <p className="text-lg font-bold text-slate-900">
-                          {campaign.created_date
-                            ? format(new Date(campaign.created_date), "dd/MM/yyyy", { locale: ptBR })
+                          {campaign.createdAt
+                            ? format(new Date(campaign.createdAt), "dd/MM/yyyy", { locale: ptBR })
                             : "-"}
                         </p>
                         <p className="text-sm text-slate-600">
-                          {campaign.created_date
-                            ? format(new Date(campaign.created_date), "HH:mm:ss", { locale: ptBR })
+                          {campaign.createdAt
+                            ? format(new Date(campaign.createdAt), "HH:mm", { locale: ptBR })
                             : "-"}
                         </p>
                       </div>
@@ -205,10 +225,10 @@ export default function DetalhamentoCampanha() {
                         <FileText className="w-6 h-6 text-purple-600" />
                       </div>
                       <div>
-                        <p className="text-lg font-bold text-slate-900 font-mono">
-                          #{campaign.id?.slice(0, 8).toUpperCase() || "N/A"}
+                        <p className="text-xl font-bold text-slate-900">
+                          #{String(campaign.number || campaign.id).slice(0, 8).toUpperCase() || "N/A"}
                         </p>
-                        <p className="text-xs text-slate-600">ID do pedido</p>
+                        <p className="text-sm text-slate-500">Número do Pedido</p>
                       </div>
                     </div>
                   </div>
@@ -220,7 +240,7 @@ export default function DetalhamentoCampanha() {
                     Título do Pedido
                   </label>
                   <div className="p-4 bg-gradient-to-r from-cyan-50 to-purple-50 rounded-lg border-2 border-cyan-200">
-                    <p className="text-xl font-bold text-slate-900">{campaign.name}</p>
+                    <p className="text-xl font-bold text-slate-900">{campaign.title}</p>
                   </div>
                 </div>
 

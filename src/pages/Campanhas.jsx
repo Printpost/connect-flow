@@ -151,7 +151,8 @@ export default function Campanhas() {
     if (!campaignsResponse?.data) return [];
     
     return campaignsResponse.data.map(campaign => ({
-      id: campaign.number || campaign.id,
+      id: campaign.id, // MongoDB ID for detail page
+      number: campaign.number, // Display number
       name: campaign.title,
       status: mapPrintpostStatus(campaign.status),
       created_date: campaign.createdAt,

@@ -379,6 +379,25 @@ export async function fetchCampaignsList({
   });
 }
 
+export async function fetchCampaignDetail({
+  token,
+  campaignId,
+  signal,
+} = {}) {
+  if (!token) {
+    throw new Error('Token obrigatório para detalhes da campanha');
+  }
+
+  if (!campaignId) {
+    throw new Error('ID da campanha é obrigatório');
+  }
+
+  return apiRequest(`/Requests/${campaignId}/detail`, {
+    token,
+    signal,
+  });
+}
+
 export function resolveApiBaseUrl() {
   return API_BASE_URL;
 }
